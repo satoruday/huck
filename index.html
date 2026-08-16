@@ -76,31 +76,32 @@
     margin: 8px 0;
   }
 
-  .question-title {
-    font-size: 0.95rem;
-    color: #6b5636;
-  }
-  .question-title b {
-    color: var(--ink);
-    font-size: 1.05rem;
-  }
-
   #controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-size: 0.85rem;
+  }
+
+  .intro-text {
+    font-size: 0.9rem;
+    color: #6b5636;
+    line-height: 1.5;
+  }
+  .intro-text b {
+    color: var(--ink);
   }
 
   #controls button.nav {
     background: none;
     border: 1px solid #cbb994;
     border-radius: 8px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     font-size: 0.85rem;
     color: var(--ink);
     cursor: pointer;
+    white-space: nowrap;
   }
 
   /* Sentence build area */
@@ -355,14 +356,13 @@
 <div id="app">
   <header>
     <h1>🪵 ことばの積み木</h1>
-    <div class="sub">木の棒をつないで、へんてこな一文を作ろう</div>
+    <div class="sub">すきなことばをえらんで、じぶんだけの一文をつくろう</div>
   </header>
 
   <div class="panel">
     <div id="controls">
-      <button class="nav" id="prev-btn">← まえのお題</button>
-      <div class="question-title">お題：<b id="question-title-text"></b></div>
-      <button class="nav" id="next-btn">つぎのお題 →</button>
+      <div class="intro-text">「<b>〜が</b>」「<b>〜で</b>」「<b>〜を</b>」「<b>〜した</b>」のブロックを組み合わせよう</div>
+      <button class="nav" id="refill-btn">🔀 ブロックを入れかえる</button>
     </div>
   </div>
 
@@ -388,8 +388,8 @@
     <div id="result-sentence"></div>
     <div id="result-comment"></div>
     <div id="result-buttons">
-      <button id="retry-btn">もう一回</button>
-      <button id="another-btn" class="primary">べつのお題へ</button>
+      <button id="retry-btn">つくり直す</button>
+      <button id="another-btn" class="primary">またあそぶ</button>
     </div>
   </div>
 </div>
@@ -399,99 +399,49 @@
   "use strict";
 
   // ---------------------------------------------------------------
-  // 1. Question data — each question is a bag of phrase blocks with
-  //    grammatical roles. Multiple orderings are allowed as long as
-  //    basic Japanese sentence structure holds (see judge()).
+  // 1. Phrase pool — a large bank of subject / place / object / verb
+  //    blocks. There is no single "correct" combination: the game
+  //    just deals a generous, ever-changing scatter of blocks from
+  //    this pool and lets the player build their own sentence from
+  //    whichever ones catch their eye.
   // ---------------------------------------------------------------
-  const questions = [
-    {
-      title: "桃太郎の意外な一日",
-      blocks: [
-        { text: "桃太郎が", type: "subject" },
-        { text: "高速道路で", type: "place" },
-        { text: "長いだいこんを", type: "object" },
-        { text: "食べてみた", type: "verb" }
-      ]
-    },
-    {
-      title: "肝っ玉かあさんの真夜中",
-      blocks: [
-        { text: "肝っ玉かあさんが", type: "subject" },
-        { text: "うすぐらい小屋で", type: "place" },
-        { text: "謎の箱を", type: "object" },
-        { text: "見つけた", type: "verb" }
-      ]
-    },
-    {
-      title: "校長先生のひみつ",
-      blocks: [
-        { text: "校長先生が", type: "subject" },
-        { text: "体育館の裏で", type: "place" },
-        { text: "巨大なプリンを", type: "object" },
-        { text: "埋めた", type: "verb" }
-      ]
-    },
-    {
-      title: "宇宙飛行士のお使い",
-      blocks: [
-        { text: "宇宙飛行士が", type: "subject" },
-        { text: "コンビニの前で", type: "place" },
-        { text: "UFOを", type: "object" },
-        { text: "待っていた", type: "verb" }
-      ]
-    },
-    {
-      title: "5歳の少年の大発見",
-      blocks: [
-        { text: "5歳の少年が", type: "subject" },
-        { text: "公園のベンチで", type: "place" },
-        { text: "宝物を", type: "object" },
-        { text: "発見した", type: "verb" }
-      ]
-    },
-    {
-      title: "となりの犬の一大事",
-      blocks: [
-        { text: "となりの犬が", type: "subject" },
-        { text: "山奥の温泉で", type: "place" },
-        { text: "昨日の宿題を", type: "object" },
-        { text: "隠した", type: "verb" }
-      ]
-    },
-    {
-      title: "桃太郎、鬼と再会",
-      blocks: [
-        { text: "桃太郎が", type: "subject" },
-        { text: "真夜中の学校で", type: "place" },
-        { text: "鬼を", type: "object" },
-        { text: "追いかけた", type: "verb" }
-      ]
-    },
-    {
-      title: "校長先生の号泣事件",
-      blocks: [
-        { text: "校長先生が", type: "subject" },
-        { text: "まがりくねった道で", type: "place" },
-        { text: "巨大なプリンを", type: "object" },
-        { text: "泣いてしまった", type: "verb" }
-      ]
-    }
-  ];
+  const PHRASE_POOL = {
+    subject: [
+      "桃太郎が", "肝っ玉かあさんが", "となりの犬が", "宇宙飛行士が",
+      "5歳の少年が", "校長先生が", "忍者が", "おばあちゃんが",
+      "サンタクロースが", "ロボットが", "近所のねこが", "町内会長が"
+    ],
+    place: [
+      "うすぐらい小屋で", "高速道路で", "公園のベンチで", "真夜中の学校で",
+      "山奥の温泉で", "コンビニの前で", "体育館の裏で", "まがりくねった道で",
+      "満員電車の中で", "月面基地で", "屋上の物置で", "商店街のすみで"
+    ],
+    object: [
+      "長いだいこんを", "宝物を", "巨大なプリンを", "謎の箱を",
+      "昨日の宿題を", "UFOを", "鬼を", "最後のドーナツを",
+      "空飛ぶ絨毯を", "古い日記を", "光るきのこを", "先生のカツラを"
+    ],
+    verb: [
+      "食べてみた", "発見した", "隠した", "追いかけた",
+      "泣いてしまった", "作ってみた", "埋めた", "驚いた",
+      "待っていた", "見つけた", "拾い上げた", "分解してみた"
+    ]
+  };
+
+  const TYPE_LABEL = { subject: "だれが", place: "どこで", object: "なにを", verb: "どうした" };
+  const TRAY_COUNT_PER_TYPE = 5;
 
   // ---------------------------------------------------------------
   // State
   // ---------------------------------------------------------------
-  let qIndex = 0;
   let blockSeq = 0;
   const els = {
     app: document.getElementById("app"),
-    title: document.getElementById("question-title-text"),
     tray: document.getElementById("tray"),
     sentence: document.getElementById("sentence-area"),
     finishBtn: document.getElementById("finish-btn"),
     clearBtn: document.getElementById("clear-btn"),
-    prevBtn: document.getElementById("prev-btn"),
-    nextBtn: document.getElementById("next-btn"),
+    refillBtn: document.getElementById("refill-btn"),
     overlay: document.getElementById("overlay"),
     resultHeadline: document.getElementById("result-headline"),
     resultSentence: document.getElementById("result-sentence"),
@@ -500,21 +450,33 @@
     anotherBtn: document.getElementById("another-btn")
   };
 
-  function loadQuestion(index) {
-    qIndex = ((index % questions.length) + questions.length) % questions.length;
-    const q = questions[qIndex];
-    els.title.textContent = q.title;
+  function pickRandom(arr, count) {
+    const copy = [...arr];
+    const out = [];
+    while (out.length < count && copy.length) {
+      const i = Math.floor(Math.random() * copy.length);
+      out.push(copy.splice(i, 1)[0]);
+    }
+    return out;
+  }
+
+  function dealTray() {
     els.tray.innerHTML = "";
     els.sentence.innerHTML = '<div class="placeholder">ここにブロックをならべてね</div>';
 
-    // Shuffle order for tray presentation
-    const shuffled = [...q.blocks].sort(() => Math.random() - 0.5);
-    shuffled.forEach((b) => {
+    const dealt = [];
+    Object.keys(PHRASE_POOL).forEach((type) => {
+      pickRandom(PHRASE_POOL[type], TRAY_COUNT_PER_TYPE).forEach((text) => {
+        dealt.push({ text, type });
+      });
+    });
+    // shuffle overall order so same-type blocks aren't grouped
+    dealt.sort(() => Math.random() - 0.5);
+    dealt.forEach((b) => {
       const el = createBlock(b.text, b.type);
       els.tray.appendChild(el);
     });
 
-    // Position blocks randomly & scattered after layout
     requestAnimationFrame(scatterTray);
   }
 
@@ -723,7 +685,8 @@
     "おもしろい文章！",
     "その発想はなかった！",
     "なんだこの文章（笑）",
-    "展示に飾りたいレベル！"
+    "展示に飾りたいレベル！",
+    "世界にひとつだけの一文！"
   ];
 
   function buildSentenceText(placedBlocks) {
@@ -763,8 +726,11 @@
     placedEls.forEach((el) => returnToTray(el));
   });
 
-  els.prevBtn.addEventListener("click", () => loadQuestion(qIndex - 1));
-  els.nextBtn.addEventListener("click", () => loadQuestion(qIndex + 1));
+  els.refillBtn.addEventListener("click", () => {
+    const placedEls = Array.from(els.sentence.querySelectorAll(".block.placed"));
+    placedEls.forEach((el) => el.remove());
+    dealTray();
+  });
 
   els.retryBtn.addEventListener("click", () => {
     els.overlay.classList.remove("show");
@@ -772,7 +738,9 @@
 
   els.anotherBtn.addEventListener("click", () => {
     els.overlay.classList.remove("show");
-    loadQuestion(qIndex + 1 + Math.floor(Math.random() * (questions.length - 1)));
+    const placedEls = Array.from(els.sentence.querySelectorAll(".block.placed"));
+    placedEls.forEach((el) => el.remove());
+    dealTray();
   });
 
   window.addEventListener("resize", () => {
@@ -780,7 +748,7 @@
   });
 
   // init
-  loadQuestion(Math.floor(Math.random() * questions.length));
+  dealTray();
 })();
 </script>
 </body>
