@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ことばの積み木</title>
+<style>
+  :root {
+    --paper: #f3ead9;
+    --wood-light: #e8c896;
+    --wood-mid: #d9ac6f;
+    --wood-dark: #b8814a;
+    --ink: #3a2c1d;
+    --accent-red: #c0392b;
+    --accent-blue: #2874a6;
+    --accent-green: #4a7c3f;
+    --accent-yellow: #d4a017;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    background: var(--paper);
+    font-family: "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    color: var(--ink);
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.4), transparent 40%),
+      repeating-linear-gradient(0deg, rgba(180,150,110,0.05) 0px, rgba(180,150,110,0.05) 2px, transparent 2px, transparent 4px);
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 12px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    padding: 8px 0 4px;
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    margin: 0;
+    letter-spacing: 0.05em;
+    color: var(--ink);
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+  }
+
+  header .sub {
+    font-size: 0.85rem;
+    color: #7a6a54;
+    margin-top: 2px;
+  }
+
+  .panel {
+    background: #fffaf0;
+    border: 2px solid #e2d3b8;
+    border-radius: 14px;
+    box-shadow: 0 3px 8px rgba(120, 90, 50, 0.12);
+    padding: 10px 14px;
+    margin: 8px 0;
+  }
+
+  .question-title {
+    font-size: 0.95rem;
+    color: #6b5636;
+  }
+  .question-title b {
+    color: var(--ink);
+    font-size: 1.05rem;
+  }
+
+  #controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+  }
+
+  #controls button.nav {
+    background: none;
+    border: 1px solid #cbb994;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  /* Sentence build area */
+  #sentence-area {
+    min-height: 92px;
+    background: repeating-linear-gradient(
+      to bottom,
+      #efe3c8 0px, #efe3c8 38px, #e3d3ae 38px, #e3d3ae 40px
+    );
+    border: 3px dashed #c8ad7c;
+    border-radius: 14px;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    position: relative;
+  }
+
+  #sentence-area.dragover {
+    border-color: var(--accent-green);
+    background-color: #eef3e6;
+  }
+
+  #sentence-area .placeholder {
+    color: #a9967a;
+    font-size: 0.85rem;
+    margin: auto;
+    pointer-events: none;
+  }
+
+  /* Tray of unused blocks */
+  #tray-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+  }
+
+  #tray {
+    flex: 1;
+    position: relative;
+    background: #ece0c4;
+    border-radius: 14px;
+    border: 2px solid #d9c7a0;
+    padding: 10px;
+    min-height: 220px;
+    overflow: hidden;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(150,120,80,0.04) 0px, rgba(150,120,80,0.04) 40px, transparent 40px, transparent 80px);
+  }
+
+  /* Wood block */
+  .block {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    min-height: 42px;
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.25), rgba(0,0,0,0.05)),
+      linear-gradient(100deg, var(--wood-light) 0%, var(--wood-mid) 45%, var(--wood-light) 100%);
+    background-blend-mode: overlay, normal;
+    border: 1px solid var(--wood-dark);
+    box-shadow:
+      0 3px 0 rgba(120, 84, 40, 0.35),
+      0 5px 8px rgba(60, 40, 15, 0.25);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+    cursor: grab;
+    touch-action: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+  }
+
+  .block::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background-image:
+      repeating-linear-gradient(
+        95deg,
+        rgba(120, 84, 40, 0.10) 0px,
+        rgba(120, 84, 40, 0.10) 1px,
+        transparent 1px,
+        transparent 6px
+      );
+    pointer-events: none;
+    mix-blend-mode: multiply;
+  }
+
+  .block::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    top: 3px;
+    height: 4px;
+    border-radius: 3px;
+  }
+
+  .block.tag-subject::after { background: var(--accent-red); }
+  .block.tag-place::after   { background: var(--accent-blue); }
+  .block.tag-object::after  { background: var(--accent-green); }
+  .block.tag-verb::after    { background: var(--accent-yellow); }
+
+  .block .label {
+    position: relative;
+    z-index: 1;
+    font-family: "Klee One", "Hiragino Maru Gothic ProN", sans-serif;
+  }
+
+  .block.dragging {
+    cursor: grabbing;
+    transform: scale(1.12) rotate(var(--rot, -2deg));
+    box-shadow:
+      0 10px 4px rgba(120, 84, 40, 0.25),
+      0 16px 22px rgba(40, 25, 10, 0.35);
+    z-index: 1000;
+    opacity: 0.95;
+  }
+
+  .block.placed {
+    margin: 2px;
+  }
+
+  .block.in-tray {
+    position: absolute;
+  }
+
+  #finish-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #e2b25a, #c68a34);
+    color: #fff8ec;
+    box-shadow: 0 4px 0 #9c6a24, 0 6px 10px rgba(0,0,0,0.2);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+  }
+  #finish-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #9c6a24, 0 3px 6px rgba(0,0,0,0.2);
+  }
+
+  #clear-btn {
+    background: none;
+    border: 1px solid #cbb994;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    color: #7a6a54;
+    cursor: pointer;
+    margin-top: 6px;
+    align-self: flex-end;
+  }
+
+  /* Result modal */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(50, 35, 20, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+  }
+  #overlay.show { display: flex; }
+
+  #result-card {
+    background: #fffaf0;
+    border-radius: 18px;
+    border: 3px solid #d9ac6f;
+    padding: 24px 20px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  #result-headline {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  #result-headline.ok { color: var(--accent-green); }
+  #result-headline.ng { color: var(--accent-red); }
+
+  #result-sentence {
+    font-size: 1.25rem;
+    line-height: 1.7;
+    background: #f3ead9;
+    border-radius: 12px;
+    padding: 14px;
+    margin: 12px 0;
+    font-weight: 700;
+  }
+
+  #result-comment {
+    font-size: 0.95rem;
+    color: #6b5636;
+    margin-bottom: 16px;
+  }
+
+  #result-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  #result-buttons button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #cbb994;
+    background: #fff;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  #result-buttons button.primary {
+    background: linear-gradient(180deg, #e2b25a, #c68a34);
+    color: #fff8ec;
+    border: none;
+    font-weight: bold;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #a9967a;
+    padding: 10px 0 4px;
+  }
+
+  @media (max-width: 420px) {
+    header h1 { font-size: 1.3rem; }
+    .block { font-size: 0.9rem; padding: 8px 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🪵 ことばの積み木</h1>
+    <div class="sub">木の棒をつないで、へんてこな一文を作ろう</div>
+  </header>
+
+  <div class="panel">
+    <div id="controls">
+      <button class="nav" id="prev-btn">← まえのお題</button>
+      <div class="question-title">お題：<b id="question-title-text"></b></div>
+      <button class="nav" id="next-btn">つぎのお題 →</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="sentence-area">
+      <div class="placeholder">ここにブロックをならべてね</div>
+    </div>
+    <button id="clear-btn">ぜんぶもどす</button>
+  </div>
+
+  <div id="tray-wrap">
+    <div id="tray"></div>
+  </div>
+
+  <button id="finish-btn">文章を完成！</button>
+
+  <footer>木製ブロックの言葉あそび展示 ｜ ドラッグして並べ替えできます</footer>
+</div>
+
+<div id="overlay">
+  <div id="result-card">
+    <div id="result-headline"></div>
+    <div id="result-sentence"></div>
+    <div id="result-comment"></div>
+    <div id="result-buttons">
+      <button id="retry-btn">もう一回</button>
+      <button id="another-btn" class="primary">べつのお題へ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // 1. Question data — each question is a bag of phrase blocks with
+  //    grammatical roles. Multiple orderings are allowed as long as
+  //    basic Japanese sentence structure holds (see judge()).
+  // ---------------------------------------------------------------
+  const questions = [
+    {
+      title: "桃太郎の意外な一日",
+      blocks: [
+        { text: "桃太郎が", type: "subject" },
+        { text: "高速道路で", type: "place" },
+        { text: "長いだいこんを", type: "object" },
+        { text: "食べてみた", type: "verb" }
+      ]
+    },
+    {
+      title: "肝っ玉かあさんの真夜中",
+      blocks: [
+        { text: "肝っ玉かあさんが", type: "subject" },
+        { text: "うすぐらい小屋で", type: "place" },
+        { text: "謎の箱を", type: "object" },
+        { text: "見つけた", type: "verb" }
+      ]
+    },
+    {
+      title: "校長先生のひみつ",
+      blocks: [
+        { text: "校長先生が", type: "subject" },
+        { text: "体育館の裏で", type: "place" },
+        { text: "巨大なプリンを", type: "object" },
+        { text: "埋めた", type: "verb" }
+      ]
+    },
+    {
+      title: "宇宙飛行士のお使い",
+      blocks: [
+        { text: "宇宙飛行士が", type: "subject" },
+        { text: "コンビニの前で", type: "place" },
+        { text: "UFOを", type: "object" },
+        { text: "待っていた", type: "verb" }
+      ]
+    },
+    {
+      title: "5歳の少年の大発見",
+      blocks: [
+        { text: "5歳の少年が", type: "subject" },
+        { text: "公園のベンチで", type: "place" },
+        { text: "宝物を", type: "object" },
+        { text: "発見した", type: "verb" }
+      ]
+    },
+    {
+      title: "となりの犬の一大事",
+      blocks: [
+        { text: "となりの犬が", type: "subject" },
+        { text: "山奥の温泉で", type: "place" },
+        { text: "昨日の宿題を", type: "object" },
+        { text: "隠した", type: "verb" }
+      ]
+    },
+    {
+      title: "桃太郎、鬼と再会",
+      blocks: [
+        { text: "桃太郎が", type: "subject" },
+        { text: "真夜中の学校で", type: "place" },
+        { text: "鬼を", type: "object" },
+        { text: "追いかけた", type: "verb" }
+      ]
+    },
+    {
+      title: "校長先生の号泣事件",
+      blocks: [
+        { text: "校長先生が", type: "subject" },
+        { text: "まがりくねった道で", type: "place" },
+        { text: "巨大なプリンを", type: "object" },
+        { text: "泣いてしまった", type: "verb" }
+      ]
+    }
+  ];
+
+  // ---------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------
+  let qIndex = 0;
+  let blockSeq = 0;
+  const els = {
+    app: document.getElementById("app"),
+    title: document.getElementById("question-title-text"),
+    tray: document.getElementById("tray"),
+    sentence: document.getElementById("sentence-area"),
+    finishBtn: document.getElementById("finish-btn"),
+    clearBtn: document.getElementById("clear-btn"),
+    prevBtn: document.getElementById("prev-btn"),
+    nextBtn: document.getElementById("next-btn"),
+    overlay: document.getElementById("overlay"),
+    resultHeadline: document.getElementById("result-headline"),
+    resultSentence: document.getElementById("result-sentence"),
+    resultComment: document.getElementById("result-comment"),
+    retryBtn: document.getElementById("retry-btn"),
+    anotherBtn: document.getElementById("another-btn")
+  };
+
+  function loadQuestion(index) {
+    qIndex = ((index % questions.length) + questions.length) % questions.length;
+    const q = questions[qIndex];
+    els.title.textContent = q.title;
+    els.tray.innerHTML = "";
+    els.sentence.innerHTML = '<div class="placeholder">ここにブロックをならべてね</div>';
+
+    // Shuffle order for tray presentation
+    const shuffled = [...q.blocks].sort(() => Math.random() - 0.5);
+    shuffled.forEach((b) => {
+      const el = createBlock(b.text, b.type);
+      els.tray.appendChild(el);
+    });
+
+    // Position blocks randomly & scattered after layout
+    requestAnimationFrame(scatterTray);
+  }
+
+  function createBlock(text, type) {
+    const el = document.createElement("div");
+    el.className = "block in-tray tag-" + type;
+    el.dataset.type = type;
+    el.dataset.id = "blk-" + (++blockSeq);
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = text;
+    el.appendChild(label);
+    attachDrag(el);
+    return el;
+  }
+
+  function scatterTray() {
+    const trayRect = els.tray.getBoundingClientRect();
+    const blocks = Array.from(els.tray.querySelectorAll(".block.in-tray"));
+    const cols = Math.max(1, Math.floor((trayRect.width - 20) / 130));
+    blocks.forEach((el, i) => {
+      const w = el.offsetWidth || 110;
+      const h = el.offsetHeight || 42;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const baseX = 10 + col * ((trayRect.width - 30) / cols);
+      const baseY = 10 + row * (h + 18);
+      const jitterX = (Math.random() - 0.5) * 24;
+      const jitterY = (Math.random() - 0.5) * 14;
+      const rot = (Math.random() - 0.5) * 12;
+      el.style.left = Math.max(4, baseX + jitterX) + "px";
+      el.style.top = Math.max(4, baseY + jitterY) + "px";
+      el.style.transform = "rotate(" + rot + "deg)";
+      el.style.setProperty("--rot", rot + "deg");
+      el.dataset.rot = rot;
+    });
+    const neededHeight = 30 + Math.ceil(blocks.length / cols) * 60;
+    els.tray.style.minHeight = Math.max(220, neededHeight) + "px";
+  }
+
+  // ---------------------------------------------------------------
+  // Drag & drop (mouse + touch unified via Pointer Events)
+  // ---------------------------------------------------------------
+  let dragState = null;
+
+  function attachDrag(el) {
+    el.addEventListener("pointerdown", onPointerDown);
+  }
+
+  function onPointerDown(e) {
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    const rect = el.getBoundingClientRect();
+    dragState = {
+      el,
+      pointerId: e.pointerId,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      startedInTray: el.classList.contains("in-tray"),
+      origParent: el.parentNode,
+      origNext: el.nextSibling
+    };
+
+    // If placed in sentence area, pull it out into free-floating drag
+    // by temporarily switching to fixed positioning under body.
+    const appRect = document.body.getBoundingClientRect();
+    el.classList.add("dragging");
+    el.style.position = "fixed";
+    el.style.left = rect.left + "px";
+    el.style.top = rect.top + "px";
+    el.style.zIndex = 1000;
+    document.body.appendChild(el);
+    el.style.setProperty("--rot", "-3deg");
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+  }
+
+  function onPointerMove(e) {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    const el = dragState.el;
+    el.style.left = (e.clientX - dragState.offsetX) + "px";
+    el.style.top = (e.clientY - dragState.offsetY) + "px";
+
+    const overSentence = isOverElement(els.sentence, e.clientX, e.clientY);
+    els.sentence.classList.toggle("dragover", overSentence);
+  }
+
+  function isOverElement(el, x, y) {
+    const r = el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  function onPointerUp(e) {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    const el = dragState.el;
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+    els.sentence.classList.remove("dragover");
+
+    el.classList.remove("dragging");
+    el.style.position = "";
+    el.style.zIndex = "";
+
+    const dropInSentence = isOverElement(els.sentence, e.clientX, e.clientY);
+
+    if (dropInSentence) {
+      placeInSentence(el, e.clientX);
+    } else {
+      returnToTray(el);
+    }
+
+    dragState = null;
+  }
+
+  function placeInSentence(el, clientX) {
+    // remove placeholder if present
+    const placeholder = els.sentence.querySelector(".placeholder");
+    if (placeholder) placeholder.remove();
+
+    el.classList.remove("in-tray");
+    el.classList.add("placed");
+    el.style.left = "";
+    el.style.top = "";
+    el.style.transform = "";
+
+    // Determine insertion point based on x position among existing placed blocks
+    const siblings = Array.from(els.sentence.querySelectorAll(".block.placed")).filter((s) => s !== el);
+    let inserted = false;
+    for (const sib of siblings) {
+      const r = sib.getBoundingClientRect();
+      if (clientX < r.left + r.width / 2) {
+        els.sentence.insertBefore(el, sib);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) els.sentence.appendChild(el);
+
+    checkEmptySentence();
+  }
+
+  function returnToTray(el) {
+    el.classList.remove("placed");
+    el.classList.add("in-tray");
+    el.style.transform = "";
+    els.tray.appendChild(el);
+    requestAnimationFrame(scatterTray);
+    checkEmptySentence();
+  }
+
+  function checkEmptySentence() {
+    if (!els.sentence.querySelector(".block")) {
+      els.sentence.innerHTML = '<div class="placeholder">ここにブロックをならべてね</div>';
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Judging logic — not a strict single-answer check. We accept any
+  // ordering that satisfies loose grammatical constraints:
+  //  - a subject block exists ("〜が/〜は")
+  //  - a verb block exists and it is the LAST block (sentences end
+  //    with the predicate in Japanese)
+  //  - if an object block exists, it must appear before the verb
+  //  - no more than 2 of the same type back-to-back (avoids feeling broken)
+  // ---------------------------------------------------------------
+  function judge(placedBlocks) {
+    if (placedBlocks.length < 2) {
+      return { ok: false, reason: "few" };
+    }
+    const types = placedBlocks.map((b) => b.type);
+    const hasSubject = types.includes("subject");
+    const hasVerb = types.includes("verb");
+    const verbIsLast = types[types.length - 1] === "verb";
+
+    if (!hasSubject || !hasVerb) {
+      return { ok: false, reason: "missing" };
+    }
+    if (!verbIsLast) {
+      return { ok: false, reason: "order" };
+    }
+    const objIndex = types.indexOf("object");
+    if (objIndex !== -1 && objIndex > types.lastIndexOf("verb")) {
+      return { ok: false, reason: "order" };
+    }
+    // same type 3+ times back to back feels broken
+    for (let i = 0; i + 2 < types.length; i++) {
+      if (types[i] === types[i + 1] && types[i + 1] === types[i + 2]) {
+        return { ok: false, reason: "repeat" };
+      }
+    }
+    return { ok: true };
+  }
+
+  const NG_MESSAGES = {
+    few: "もうすこしブロックをつなげてみよう！",
+    missing: "「〜が」と「〜した」のブロックを入れてみよう！",
+    order: "文の最後は「〜した」系のブロックにしてみよう！",
+    repeat: "似たブロックが並びすぎているかも。組み合わせを変えてみよう！"
+  };
+
+  const OK_HEADLINES = ["完成！", "いい文章！", "ちゃんと文章になってる！"];
+  const OK_COMMENTS = [
+    "この組み合わせ、好き！",
+    "おもしろい文章！",
+    "その発想はなかった！",
+    "なんだこの文章（笑）",
+    "展示に飾りたいレベル！"
+  ];
+
+  function buildSentenceText(placedBlocks) {
+    return placedBlocks.map((b) => b.text).join("、") + "。";
+  }
+
+  els.finishBtn.addEventListener("click", () => {
+    const placedEls = Array.from(els.sentence.querySelectorAll(".block.placed"));
+    const placedBlocks = placedEls.map((el) => ({
+      text: el.querySelector(".label").textContent,
+      type: el.dataset.type
+    }));
+
+    const result = judge(placedBlocks);
+
+    if (result.ok) {
+      const headline = OK_HEADLINES[Math.floor(Math.random() * OK_HEADLINES.length)];
+      const comment = OK_COMMENTS[Math.floor(Math.random() * OK_COMMENTS.length)];
+      els.resultHeadline.textContent = headline;
+      els.resultHeadline.className = "ok";
+      els.resultSentence.textContent = buildSentenceText(placedBlocks);
+      els.resultComment.textContent = comment;
+    } else {
+      els.resultHeadline.textContent = "おしい！";
+      els.resultHeadline.className = "ng";
+      els.resultSentence.textContent = placedBlocks.length
+        ? buildSentenceText(placedBlocks)
+        : "（まだブロックがありません）";
+      els.resultComment.textContent = NG_MESSAGES[result.reason] || "もう一度ならべてみよう！";
+    }
+
+    els.overlay.classList.add("show");
+  });
+
+  els.clearBtn.addEventListener("click", () => {
+    const placedEls = Array.from(els.sentence.querySelectorAll(".block.placed"));
+    placedEls.forEach((el) => returnToTray(el));
+  });
+
+  els.prevBtn.addEventListener("click", () => loadQuestion(qIndex - 1));
+  els.nextBtn.addEventListener("click", () => loadQuestion(qIndex + 1));
+
+  els.retryBtn.addEventListener("click", () => {
+    els.overlay.classList.remove("show");
+  });
+
+  els.anotherBtn.addEventListener("click", () => {
+    els.overlay.classList.remove("show");
+    loadQuestion(qIndex + 1 + Math.floor(Math.random() * (questions.length - 1)));
+  });
+
+  window.addEventListener("resize", () => {
+    requestAnimationFrame(scatterTray);
+  });
+
+  // init
+  loadQuestion(Math.floor(Math.random() * questions.length));
+})();
+</script>
+</body>
+</html>
