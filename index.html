@@ -143,13 +143,16 @@
 
   #tray {
     flex: 1;
-    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
+    gap: 8px;
     background: #ece0c4;
     border-radius: 14px;
     border: 2px solid #d9c7a0;
-    padding: 10px;
+    padding: 12px;
     min-height: 220px;
-    overflow: hidden;
     background-image:
       repeating-linear-gradient(90deg, rgba(150,120,80,0.04) 0px, rgba(150,120,80,0.04) 40px, transparent 40px, transparent 80px);
   }
@@ -231,10 +234,6 @@
 
   .block.placed {
     margin: 2px;
-  }
-
-  .block.in-tray {
-    position: absolute;
   }
 
   #finish-btn {
@@ -1264,8 +1263,6 @@
       const el = createBlock(b.text, b.type);
       els.tray.appendChild(el);
     });
-
-    requestAnimationFrame(scatterTray);
   }
 
   function createBlock(text, type) {
@@ -1279,30 +1276,6 @@
     el.appendChild(label);
     attachDrag(el);
     return el;
-  }
-
-  function scatterTray() {
-    const trayRect = els.tray.getBoundingClientRect();
-    const blocks = Array.from(els.tray.querySelectorAll(".block.in-tray"));
-    const cols = Math.max(1, Math.floor((trayRect.width - 20) / 130));
-    blocks.forEach((el, i) => {
-      const w = el.offsetWidth || 110;
-      const h = el.offsetHeight || 42;
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const baseX = 10 + col * ((trayRect.width - 30) / cols);
-      const baseY = 10 + row * (h + 18);
-      const jitterX = (Math.random() - 0.5) * 24;
-      const jitterY = (Math.random() - 0.5) * 14;
-      const rot = (Math.random() - 0.5) * 12;
-      el.style.left = Math.max(4, baseX + jitterX) + "px";
-      el.style.top = Math.max(4, baseY + jitterY) + "px";
-      el.style.transform = "rotate(" + rot + "deg)";
-      el.style.setProperty("--rot", rot + "deg");
-      el.dataset.rot = rot;
-    });
-    const neededHeight = 30 + Math.ceil(blocks.length / cols) * 60;
-    els.tray.style.minHeight = Math.max(220, neededHeight) + "px";
   }
 
   // ---------------------------------------------------------------
@@ -1413,7 +1386,6 @@
     el.classList.add("in-tray");
     el.style.transform = "";
     els.tray.appendChild(el);
-    requestAnimationFrame(scatterTray);
     checkEmptySentence();
   }
 
@@ -1529,10 +1501,6 @@
     const placedEls = Array.from(els.sentence.querySelectorAll(".block.placed"));
     placedEls.forEach((el) => el.remove());
     dealTray();
-  });
-
-  window.addEventListener("resize", () => {
-    requestAnimationFrame(scatterTray);
   });
 
   // init
